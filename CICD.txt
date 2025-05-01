@@ -1,0 +1,17 @@
+1. Changes are made in taufik_dev and PR’d to dev.
+
+2. CI/CD builds the project and runs tests.
+
+3. Once PR is merged into dev, the pipeline builds Docker images and pushes them to Azure Container Registry.
+
+4. The code is then merged into staging, where the process repeats, and a tag like v1.0.0-rc.1 is created.
+
+5. When PR is merged into main, the pipeline will:
+
+6. Build Docker image and push to ACR.
+
+7. Create a version tag on main (e.g., v1.1.0).
+
+8. Automatically create a release for version v1.1.0 on GitHub, mentioning the previous version.
+
+9. You can also optionally upload artifacts like .zip files, built binaries, or Docker images to the release.

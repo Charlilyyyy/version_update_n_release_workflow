@@ -1,0 +1,60 @@
+jobs:
+  build_and_push:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v1
+      
+      - name: Build and push Docker image
+        uses: docker/build-push-action@v2
+        with:
+          context: .
+          push: true
+          tags: ${{ secrets.ACR_NAME }}/your-app:${{ github.ref_name }}
+          build-args: |
+            VERSION=${{ github.ref_name }}  # Use branch or tag name
+  create_tags:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+
+      - name: Set up Git
+        run: |
+          git config --global user.name "Your Name"
+          git config --global user.email "your-email@example.com"
+
+      - name: Fetch latest tags
+        run: git fetch --tags
+
+      - name: Create a tag for staging
+        if: github.ref == 'refs/heads/staging'
+        run: |
+          VERSION="v1.0.0-rc.${{ github.run_number }}"
+          git tag -a $VERSION -m "Release Candidate for version $VERSION"
+          git push origin $VERSION
+
+      - name: Create a tag for main
+        if: github.ref == 'refs/heads/main'
+        run: |
+          VERSION="v1.1.0"
+          git tag -a $VERSION -m "Official release version $VERSION"
+          git push origin $VERSION
+  create_release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v2
+      
+      - name: Create release
+        if: github.ref == 'refs/heads/main'
+        run: |
+          VERSION="v1.1.0"
+          PRERELEASE_VERSION="v1.0.0-rc.1"
+          
+          curl -XPOST -H "Authorization: token ${{ secrets.GITHUB_TOKEN }}" \
+          -d '{"tag_name":"'$VERSION'","target_commitish":"main","name":"Release '$VERSION'","body":"This is the official release for version '$VERSION'. Previous version was '$PRERELEASE_VERSION'.","draft":false,"prerelease":false}' \
+          https://api.github.com/repos/${{ github.repository }}/releases
