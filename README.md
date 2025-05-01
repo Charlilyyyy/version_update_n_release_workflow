@@ -1,1 +1,33 @@
 ### This is README for git tag versioning in github
+
+1. changes from taufik_dev
+
+2. push to remote branch taufik_dev
+
+3. pr to branch dev
+
+4. review and accept pr
+
+5. pr to branch staging (syncing)
+
+6. review and accept pr 
+
+7. then on local use CLI to put tag on the sync (branch staging) for versioning
+
+    - git checkout staging
+    - git pull origin staging
+    - git tag -a v1.0.0-rc.1 -m "Release Candidate 1 for version 1.0.0"
+    - git push origin v1.1.0-rc.1
+
+8. pr to branch main (syncing)
+
+9. review and accept pr
+
+10. then on local use CLI to put tag on the sync (branch staging) for versioning
+
+    - git checkout main
+    - git pull origin main
+    - git tag -a v1.1.0 -m "Official release v1.1.0"
+    - git push origin v1.1.0
+
+11. then go to releases page and create release for the latest production version and mention previous version
