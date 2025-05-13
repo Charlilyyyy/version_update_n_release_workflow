@@ -43,10 +43,12 @@ jobs:
         id: check_tag
         run: |
           tag="${{ steps.bump_version.outputs.new_tag }}"
+          echo "Checking if tag $tag exists..."
           if git rev-parse "$tag" >/dev/null 2>&1; then
-            echo "Tag $tag already exists. Skipping tag creation."
+            echo "Tag $tag already exists."
             echo "exists=true" >> $GITHUB_OUTPUT
           else
+            echo "Tag $tag does not exist."
             echo "exists=false" >> $GITHUB_OUTPUT
           fi
 
