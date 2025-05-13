@@ -7,7 +7,6 @@ on:
 
 jobs:
   tag:
-    if: github.event.head_commit.message != 'skip-tag'  # Optional: prevent re-tagging
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
@@ -25,7 +24,9 @@ jobs:
       - name: Bump patch version
         id: new_version
         run: |
-          IFS='.' read -r major minor patch <<< "${{ steps.get_latest_tag.outputs.latest#v }}"
+          latest="${{ steps.get_latest_tag.outputs.latest }}"
+          stripped=${latest#v}
+          IFS='.' read -r major minor patch <<< "$stripped"
           new_tag="v$major.$minor.$((patch + 1))"
           echo "new_tag=$new_tag" >> $GITHUB_OUTPUT
 
