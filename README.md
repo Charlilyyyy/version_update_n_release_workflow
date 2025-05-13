@@ -6,3 +6,4 @@
 - changes from staging - 4
 - changes from staging - 5
 - changes from staging - 6
+- changes from staging - 7
