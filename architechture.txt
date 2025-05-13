@@ -1,0 +1,24 @@
+/k8s
+├── deployments
+│   ├── llm_be.yaml
+│   ├── graphql_be.yaml
+│   ├── neo4j_container.yaml
+│   ├── app_fe.yaml
+│   └── admin_visual_fe.yaml
+├── services
+│   ├── llm_be_svc.yaml
+│   ├── graphql_be_svc.yaml
+│   ├── neo4j_container_svc.yaml
+├── ingress
+│   ├── app_fe_ingress.yaml
+│   ├── admin_visual_fe_ingress.yaml
+├── configmaps
+│   ├── neo4j_config.yaml
+├── secrets
+│   ├── db_credentials.yaml
+├── hpa
+│   ├── llm_be_hpa.yaml
+│   ├── graphql_be_hpa.yaml
+│   ├── neo4j_hpa.yaml
+├── namespace.yaml
+└── kustomization.yaml
