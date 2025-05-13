@@ -1,4 +1,4 @@
-name: Tag on Merge to Staging
+name: Auto Tag on Merge to Staging
 
 on:
   push:
@@ -6,34 +6,52 @@ on:
       - staging
 
 jobs:
-  tag:
+  auto-tag:
     runs-on: ubuntu-latest
+
     steps:
       - name: Checkout code
         uses: actions/checkout@v3
+        with:
+          fetch-depth: 0  # Ensure we have full history for tags
 
       - name: Fetch all tags
-        run: git fetch --tags
+        run: |
+          git fetch --tags
 
-      - name: Get latest tag
+      - name: Get latest version tag
         id: get_latest_tag
         run: |
-          latest=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          echo "latest=$latest"
+          latest=$(git tag --sort=-v:refname | grep '^v' | head -n 1)
+          if [ -z "$latest" ]; then
+            latest="v0.0.0"
+          fi
+          echo "Latest tag is: $latest"
           echo "latest=$latest" >> $GITHUB_OUTPUT
 
       - name: Bump patch version
         id: bump_version
         run: |
           latest="${{ steps.get_latest_tag.outputs.latest }}"
-          # Strip the 'v' manually
           version=${latest#v}
           IFS='.' read -r major minor patch <<< "$version"
           new_tag="v$major.$minor.$((patch + 1))"
-          echo "new_tag=$new_tag"
+          echo "New tag will be: $new_tag"
           echo "new_tag=$new_tag" >> $GITHUB_OUTPUT
 
-      - name: Create new tag and push
+      - name: Check if tag already exists
+        id: check_tag
+        run: |
+          tag="${{ steps.bump_version.outputs.new_tag }}"
+          if git rev-parse "$tag" >/dev/null 2>&1; then
+            echo "Tag $tag already exists. Skipping tag creation."
+            echo "exists=true" >> $GITHUB_OUTPUT
+          else
+            echo "exists=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create and push tag
+        if: steps.check_tag.outputs.exists == 'false'
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
