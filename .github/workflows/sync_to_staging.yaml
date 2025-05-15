@@ -1,5 +1,5 @@
-# .github/workflows/tag-on-staging.yml
-name: Tag and Release on Staging
+# .github/workflows/tag-rc-on-staging.yml
+name: Tag RC on Staging Push
 
 on:
   push:
@@ -7,11 +7,11 @@ on:
       - staging
 
 jobs:
-  tag:
+  tag_rc:
     runs-on: ubuntu-latest
 
     permissions:
-      contents: write  # Required to push tags
+      contents: write  # Needed to push tags
 
     steps:
       - name: Checkout code
@@ -20,34 +20,35 @@ jobs:
       - name: Fetch all tags
         run: git fetch --tags
 
-      - name: Get latest RC tag
-        id: get_latest_tag
+      - name: Get latest main version
+        id: get_main_version
         run: |
-          # Get latest RC tag for the format vX.Y.Z-rc.N
-          latest_tag=$(git tag --list 'v*-rc.*' --sort=-v:refname | head -n 1)
-          echo "Latest tag: $latest_tag"
-          echo "latest_tag=$latest_tag" >> $GITHUB_OUTPUT
+          # Get the latest full release tag (no -rc suffix)
+          latest_main=$(git tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          echo "Latest main version: $latest_main"
+          echo "main_version=$latest_main" >> $GITHUB_OUTPUT
 
-      - name: Bump RC tag
-        id: bump_tag
+      - name: Get latest RC for this version
+        id: get_latest_rc
         run: |
-          latest_tag="${{ steps.get_latest_tag.outputs.latest_tag }}"
-
-          if [[ -z "$latest_tag" ]]; then
-            new_tag="v1.0.0-rc.1"
+          main_version="${{ steps.get_main_version.outputs.main_version }}"
+          # Extract the highest RC number for that version
+          latest_rc=$(git tag --list "${main_version}-rc.*" | sort -V | tail -n 1)
+          
+          if [[ -z "$latest_rc" ]]; then
+            new_tag="${main_version}-rc.1"
           else
-            version=$(echo "$latest_tag" | cut -d'-' -f1)
-            rc_num=$(echo "$latest_tag" | grep -o 'rc\.[0-9]*' | cut -d'.' -f2)
+            rc_num=$(echo "$latest_rc" | grep -o 'rc\.[0-9]*' | cut -d'.' -f2)
             new_rc_num=$((rc_num + 1))
-            new_tag="${version}-rc.${new_rc_num}"
+            new_tag="${main_version}-rc.${new_rc_num}"
           fi
 
-          echo "New tag: $new_tag"
+          echo "Creating new RC tag: $new_tag"
           echo "new_tag=$new_tag" >> $GITHUB_OUTPUT
 
-      - name: Create Git tag
+      - name: Create and push tag
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git tag ${{ steps.bump_tag.outputs.new_tag }}
-          git push origin ${{ steps.bump_tag.outputs.new_tag }}
+          git tag ${{ steps.get_latest_rc.outputs.new_tag }}
+          git push origin ${{ steps.get_latest_rc.outputs.new_tag }}
