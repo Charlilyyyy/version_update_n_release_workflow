@@ -1,3 +1,5 @@
 ### testing commit for main branch
 
 - main branch
+
+- test auto github release based on latest tag

@@ -1,58 +1,32 @@
-name: Tag & Release on Merge to Main
+# .github/workflows/release-on-tag.yml
+name: Create GitHub Release on Tag Push
 
 on:
   push:
-    branches:
-      - main
+    tags:
+      - 'v*.*.*'  # Matches v1.1.1, v2.0.0 etc
 
 jobs:
-  tag-and-release:
+  create_release:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # Required to create releases
+
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0  # So we can get tags
+      - name: Checkout code
+        uses: actions/checkout@v4
 
-      - name: Fetch all tags
-        run: git fetch --tags
-
-      - name: Get latest tag
-        id: get_latest_tag
+      - name: Generate release notes (optional)
+        id: release_notes
         run: |
-          latest=$(git describe --tags `git rev-list --tags --max-count=1` 2>/dev/null || echo "v0.0.0")
-          echo "latest=$latest" >> $GITHUB_OUTPUT
-
-      - name: Bump patch version
-        id: bump_version
-        run: |
-          IFS='.' read -r major minor patch <<< "${{ steps.get_latest_tag.outputs.latest#v }}"
-          new_tag="v$major.$minor.$((patch + 1))"
-          echo "new_tag=$new_tag" >> $GITHUB_OUTPUT
-
-      - name: Create new tag and push
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git tag ${{ steps.bump_version.outputs.new_tag }}
-          git push origin ${{ steps.bump_version.outputs.new_tag }}
-
-      - name: Save as previous version
-        run: echo "${{ steps.bump_version.outputs.new_tag }}" > PREVIOUS_VERSION
-
-      - name: Commit PREVIOUS_VERSION file
-        run: |
-          git config user.name "github-actions"
-          git config user.email "github-actions@github.com"
-          git add PREVIOUS_VERSION
-          git commit -m "Update previous version"
-          git push
+          tag="${GITHUB_REF#refs/tags/}"
+          echo "RELEASE_TITLE=$tag" >> $GITHUB_ENV
+          echo "RELEASE_BODY=Auto-generated release for tag $tag" >> $GITHUB_ENV
 
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
-          tag_name: ${{ steps.bump_version.outputs.new_tag }}
-          name: Release ${{ steps.bump_version.outputs.new_tag }}
-          body: |
-            Auto release after PR merge to `main`.
-            This version is now saved in `PREVIOUS_VERSION`.
+          tag_name: ${{ github.ref_name }}
+          name: ${{ env.RELEASE_TITLE }}
+          body: ${{ env.RELEASE_BODY }}
