@@ -1,4 +1,5 @@
-name: Auto Tag on Merge to Staging
+# .github/workflows/tag-on-staging.yml
+name: Tag and Release on Staging
 
 on:
   push:
@@ -6,56 +7,47 @@ on:
       - staging
 
 jobs:
-  auto-tag:
+  tag:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # Required to push tags
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
-        with:
-          fetch-depth: 0  # Ensure we have full history for tags
+        uses: actions/checkout@v4
 
       - name: Fetch all tags
-        run: |
-          git fetch --tags
+        run: git fetch --tags
 
-      - name: Get latest version tag
+      - name: Get latest RC tag
         id: get_latest_tag
         run: |
-          latest=$(git tag --sort=-v:refname | grep '^v' | head -n 1)
-          if [ -z "$latest" ]; then
-            latest="v0.0.0"
-          fi
-          echo "Latest tag is: $latest"
-          echo "latest=$latest" >> $GITHUB_OUTPUT
+          # Get latest RC tag for the format vX.Y.Z-rc.N
+          latest_tag=$(git tag --list 'v*-rc.*' --sort=-v:refname | head -n 1)
+          echo "Latest tag: $latest_tag"
+          echo "latest_tag=$latest_tag" >> $GITHUB_OUTPUT
 
-      - name: Bump patch version
-        id: bump_version
+      - name: Bump RC tag
+        id: bump_tag
         run: |
-          latest="${{ steps.get_latest_tag.outputs.latest }}"
-          version=${latest#v}
-          IFS='.' read -r major minor patch <<< "$version"
-          new_tag="v$major.$minor.$((patch + 1))"
-          echo "New tag will be: $new_tag"
+          latest_tag="${{ steps.get_latest_tag.outputs.latest_tag }}"
+
+          if [[ -z "$latest_tag" ]]; then
+            new_tag="v1.0.0-rc.1"
+          else
+            version=$(echo "$latest_tag" | cut -d'-' -f1)
+            rc_num=$(echo "$latest_tag" | grep -o 'rc\.[0-9]*' | cut -d'.' -f2)
+            new_rc_num=$((rc_num + 1))
+            new_tag="${version}-rc.${new_rc_num}"
+          fi
+
+          echo "New tag: $new_tag"
           echo "new_tag=$new_tag" >> $GITHUB_OUTPUT
 
-      - name: Check if tag already exists
-        id: check_tag
-        run: |
-          tag="${{ steps.bump_version.outputs.new_tag }}"
-          echo "Checking if tag $tag exists..."
-          if git rev-parse "$tag" >/dev/null 2>&1; then
-            echo "Tag $tag already exists."
-            echo "exists=true" >> $GITHUB_OUTPUT
-          else
-            echo "Tag $tag does not exist."
-            echo "exists=false" >> $GITHUB_OUTPUT
-          fi
-
-      - name: Create and push tag
-        if: steps.check_tag.outputs.exists == 'false'
+      - name: Create Git tag
         run: |
           git config user.name "github-actions"
           git config user.email "github-actions@github.com"
-          git tag ${{ steps.bump_version.outputs.new_tag }}
-          git push origin ${{ steps.bump_version.outputs.new_tag }}
+          git tag ${{ steps.bump_tag.outputs.new_tag }}
+          git push origin ${{ steps.bump_tag.outputs.new_tag }}
