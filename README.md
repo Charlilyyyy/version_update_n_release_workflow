@@ -11,3 +11,4 @@
 - changes from staging - 9
 - changes from staging - 10
 - changes from staging - 11
+- changes from staging - 12
