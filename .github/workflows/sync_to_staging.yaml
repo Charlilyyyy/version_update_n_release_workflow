@@ -1,4 +1,5 @@
-name: Tag on Merge to Staging 
+# .github/workflows/tag-rc-on-staging.yml
+name: Tag RC on Staging Push
 
 on:
   push:
@@ -6,33 +7,48 @@ on:
       - staging
 
 jobs:
-  tag:
+  tag_rc:
     runs-on: ubuntu-latest
+
+    permissions:
+      contents: write  # Needed to push tags
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Fetch all tags
         run: git fetch --tags
 
-      - name: Get latest tag
-        id: get_latest_tag
+      - name: Get latest main version
+        id: get_main_version
         run: |
-          latest=$(git describe --tags --abbrev=0 2>/dev/null || echo "v0.0.0")
-          echo "latest=$latest" >> $GITHUB_OUTPUT
+          # Get the latest full release tag (no -rc suffix)
+          latest_main=$(git tag --list 'v*' | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -V | tail -n 1)
+          echo "Latest main version: $latest_main"
+          echo "main_version=$latest_main" >> $GITHUB_OUTPUT
 
-      - name: Bump patch version
-        id: new_version
+      - name: Get latest RC for this version
+        id: get_latest_rc
         run: |
-          latest="${{ steps.get_latest_tag.outputs.latest }}"
-          stripped=${latest#v}
-          IFS='.' read -r major minor patch <<< "$stripped"
-          new_tag="v$major.$minor.$((patch + 1))"
+          main_version="${{ steps.get_main_version.outputs.main_version }}"
+          # Extract the highest RC number for that version
+          latest_rc=$(git tag --list "${main_version}-rc.*" | sort -V | tail -n 1)
+          
+          if [[ -z "$latest_rc" ]]; then
+            new_tag="${main_version}-rc.1"
+          else
+            rc_num=$(echo "$latest_rc" | grep -o 'rc\.[0-9]*' | cut -d'.' -f2)
+            new_rc_num=$((rc_num + 1))
+            new_tag="${main_version}-rc.${new_rc_num}"
+          fi
+
+          echo "Creating new RC tag: $new_tag"
           echo "new_tag=$new_tag" >> $GITHUB_OUTPUT
 
-      - name: Create new tag
+      - name: Create and push tag
         run: |
-          git config user.name "${{ github.actor }}"
-          git config user.email "${{ github.actor }}@users.noreply.github.com"
-          git tag ${{ steps.new_version.outputs.new_tag }}
-          git push origin ${{ steps.new_version.outputs.new_tag }}
+          git config user.name "github-actions"
+          git config user.email "github-actions@github.com"
+          git tag ${{ steps.get_latest_rc.outputs.new_tag }}
+          git push origin ${{ steps.get_latest_rc.outputs.new_tag }}
