@@ -1,5 +1,5 @@
 # .github/workflows/tag-rc-on-staging.yml
-name: Tag RC on Staging Push
+name: Tag RC on Staging Push 
 
 on:
   push:
